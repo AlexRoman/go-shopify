@@ -169,6 +169,9 @@ func CheckResponse(r *http.Response) error {
 		return errors.Wrapf(err, "could not read response body; status=%d", r.StatusCode)
 	}
 	if data == nil {
+		return fmt.Errorf("nil response body; status=%d", r.StatusCode)
+	}
+	if len(data) == 0 {
 		return fmt.Errorf("empty response body; status=%d", r.StatusCode)
 	}
 
