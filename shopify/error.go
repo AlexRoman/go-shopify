@@ -7,11 +7,12 @@ package shopify
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"reflect"
+
+	"github.com/pkg/errors"
 )
 
 // Shopify errors usually have the form:
@@ -126,7 +127,7 @@ func (r *ErrorResponse) Error() string {
 	if e, ok := r.Errors.(string); ok {
 		return e
 	}
-	return "unknown, unparsed error"
+	return fmt.Sprintf("unknown, unparsed error: %v", r.Errors)
 }
 
 func toAddressError(key, field string, listError []interface{}) *AddressError {
@@ -164,9 +165,18 @@ func CheckResponse(r *http.Response) error {
 	}
 	errorResponse := &ErrorResponse{}
 	data, err := ioutil.ReadAll(r.Body)
-	if err == nil && data != nil {
-		json.Unmarshal(data, errorResponse)
+	if err != nil {
+		return errors.Wrapf(err, "could not read response body; status=%d", r.StatusCode)
 	}
+	if data == nil {
+		return fmt.Errorf("empty response body; status=%d", r.StatusCode)
+	}
+
+	err = json.Unmarshal(data, errorResponse)
+	if err != nil {
+		return errors.Wrapf(err, "could not unmarshal error response; status=%d; data='%s'", r.StatusCode, string(data))
+	}
+
 	return findFirstError(errorResponse)
 }
 
